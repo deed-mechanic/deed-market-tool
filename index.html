@@ -1,357 +1,544 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DEED MOTORS — 市場価格調査ツール</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#1A1A1A;background:#f0f2f5;min-height:100vh;}
-
-header{background:#fff;border-bottom:3px solid #C8102E;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.1);flex-wrap:wrap;gap:8px;}
-.hdr-title{font-size:17px;color:#003087;font-weight:800;}
-.hdr-sub{font-size:11px;color:#888;}
-.data-badge{background:#f0f4ff;border:1px solid #c5cfe8;border-radius:6px;padding:5px 12px;font-size:11px;color:#003087;font-weight:700;white-space:nowrap;}
-.data-badge.loading{color:#888;border-color:#ddd;background:#f8f8f8;}
-.data-badge.error{color:#c62828;border-color:#f5a0a0;background:#fde8e8;}
-
-.wrap{max-width:1100px;margin:24px auto;padding:0 20px 60px;}
-
-/* ローディング */
-#loading-screen{text-align:center;padding:60px 20px;color:#888;}
-#loading-screen .spinner{width:36px;height:36px;border:4px solid #e0e0e0;border-top-color:#003087;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
-@keyframes spin{to{transform:rotate(360deg)}}
-#error-screen{display:none;background:#fde8e8;border:1px solid #f5a0a0;border-radius:10px;padding:24px;text-align:center;color:#c62828;margin:40px auto;max-width:500px;}
-
-.card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;margin-bottom:16px;}
-.card-title{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;background:#f8f8f8;border-bottom:1px solid #ebebeb;display:flex;align-items:center;justify-content:space-between;gap:6px;}
-
-.sel-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;padding:16px;}
-.fg label{display:block;font-size:11px;font-weight:700;color:#444;margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em;}
-.fg select{width:100%;padding:9px 28px 9px 10px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;color:#1A1A1A;background:#fff;appearance:none;-webkit-appearance:none;outline:none;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat:no-repeat;background-position:right 9px center;transition:border-color .15s;}
-.fg select:focus{border-color:#003087;}
-.fg select:disabled{color:#bbb;background:#f8f8f8;}
-
-.result-summary{display:none;background:linear-gradient(135deg,#003087,#1a4db5);color:#fff;border-radius:10px;padding:16px 20px;margin-bottom:16px;}
-.summary-label{font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
-.summary-model{font-size:15px;font-weight:700;margin-bottom:12px;}
-.summary-nums{display:flex;gap:12px;flex-wrap:wrap;}
-.snum{background:rgba(255,255,255,.12);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:90px;}
-.snum .sl{font-size:10px;color:rgba(255,255,255,.6);margin-bottom:3px;}
-.snum .sv{font-size:18px;font-weight:900;}
-.snum.avg .sv{color:#FFD700;font-size:22px;}
-
-.table-wrap{overflow-x:auto;}
-table.mkt{width:100%;border-collapse:collapse;font-size:13px;}
-table.mkt th{padding:9px 12px;text-align:left;color:#fff;font-size:11px;font-weight:700;background:#1A1A1A;white-space:nowrap;}
-table.mkt th.right{text-align:right;}
-table.mkt td{padding:9px 12px;border-bottom:1px solid #f0f0f0;}
-table.mkt tr:nth-child(odd) td{background:#FAFAFA;}
-table.mkt tr:hover td{background:#e8f0fe;}
-table.mkt .price-td{color:#C8102E;font-weight:700;white-space:nowrap;text-align:right;}
-table.mkt .yr-match td{background:#fff8e1 !important;}
-table.mkt .yr-match .yr-cell{color:#C8102E;font-weight:700;}
-table.mkt .avg-row td{background:#e8f5e9 !important;font-weight:700;color:#1b5e20;}
-.count-badge{background:#f0f2f5;border:1px solid #e0e0e0;color:#3D3D3D;font-size:12px;font-weight:700;padding:2px 10px;border-radius:10px;}
-.no-data{background:#fff8e1;border:1px solid #ffe082;border-radius:7px;padding:12px 16px;font-size:13px;color:#6d4c00;text-align:center;display:none;margin-bottom:16px;}
-.note{font-size:11px;color:#909090;padding:6px 14px 10px;}
-.hint{background:#f0f4ff;border:1px solid #c5cfe8;border-radius:7px;padding:9px 14px;font-size:12px;color:#555;margin:0 16px 14px;line-height:1.6;}
-.btn-reset{background:#f5f5f5;color:#555;border:1px solid #ddd;padding:9px 14px;font-size:12px;border-radius:6px;cursor:pointer;margin:0 16px 14px;}
-.status-msg{font-size:12px;color:#2e7d32;margin-left:8px;font-weight:700;}
-
-@media(max-width:700px){.sel-grid{grid-template-columns:1fr 1fr;}.summary-nums{gap:8px;}}
-</style>
-</head>
-<body>
-
-<header>
-  <div>
-    <div class="hdr-title">🔍 DEED MOTORS — 市場価格調査ツール</div>
-    <div class="hdr-sub">Зах зээлийн үнийн судалгааны хэрэгсэл</div>
-  </div>
-  <div class="data-badge loading" id="dataBadge">⏳ データ読み込み中...</div>
-</header>
-
-<div class="wrap">
-
-  <!-- ローディング -->
-  <div id="loading-screen">
-    <div class="spinner"></div>
-    <div>市場データを読み込んでいます...</div>
-  </div>
-
-  <!-- エラー -->
-  <div id="error-screen">
-    <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
-    <div style="font-weight:700;margin-bottom:6px;">データの読み込みに失敗しました</div>
-    <div id="error-msg" style="font-size:12px;"></div>
-    <div style="margin-top:12px;font-size:12px;color:#888;">ページを再読み込みするか、管理者に連絡してください。</div>
-  </div>
-
-  <!-- メインコンテンツ（データ読み込み後に表示） -->
-  <div id="main-content" style="display:none;">
-
-    <!-- 選択パネル -->
-    <div class="card">
-      <div class="card-title">🚗 車両選択 / Тээврийн хэрэгсэл сонгох</div>
-      <div class="sel-grid">
-        <div class="fg">
-          <label>メーカー / Үйлдвэрлэгч</label>
-          <select id="maker" onchange="onMaker()">
-            <option value="">選択してください</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label>車種モデル / Загвар</label>
-          <select id="modelSlug" onchange="doSearch()" disabled>
-            <option value="">← メーカーを先に選択</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label>生産年式 / Үйлдвэрлэсэн он</label>
-          <select id="carYear" onchange="doSearch()">
-            <option value="">指定なし（全件）</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label>駆動方式 / Хөдөлгүүрийн систем</label>
-          <select id="driveType" onchange="doSearch()">
-            <option value="">指定なし</option>
-            <option value="4WD">4WD / AWD</option>
-            <option value="2WD">2WD（FF / FR）</option>
-          </select>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;padding:0 16px 14px;">
-        <button class="btn-reset" onclick="doReset()">↺ リセット</button>
-        <span class="status-msg" id="statusMsg"></span>
-      </div>
-    </div>
-
-    <!-- 結果サマリー -->
-    <div class="result-summary" id="resultSummary">
-      <div class="summary-label">📊 市場参照価格 / Зах зээлийн лавлах үнэ — UNEGUI.MN</div>
-      <div class="summary-model" id="summaryModel"></div>
-      <div class="summary-nums">
-        <div class="snum avg"><div class="sl">平均価格 / Дундаж үнэ</div><div class="sv" id="sAvg">—</div></div>
-        <div class="snum"><div class="sl">最低価格 / Хамгийн бага</div><div class="sv" id="sMin">—</div></div>
-        <div class="snum"><div class="sl">最高価格 / Хамгийн их</div><div class="sv" id="sMax">—</div></div>
-        <div class="snum"><div class="sl">価格幅 / Үнийн зөрүү</div><div class="sv" id="sRange">—</div></div>
-        <div class="snum"><div class="sl">件数 / Тоо</div><div class="sv" id="sCount">—</div></div>
-      </div>
-    </div>
-
-    <!-- データなし -->
-    <div class="no-data" id="noData">⚠️ 該当する市場データが見つかりませんでした。駆動方式または生産年を「指定なし」に変更してください。</div>
-
-    <!-- 市場データテーブル -->
-    <div class="card" id="tableCard" style="display:none;">
-      <div class="card-title">
-        <span>📋 モンゴル市場 抽出データ / Монголын зах зээлийн өгөгдөл（UNEGUI.MN）</span>
-        <span class="count-badge" id="countBadge">0件</span>
-      </div>
-      <div class="hint" id="tableHint"></div>
-      <div class="table-wrap">
-        <table class="mkt">
-          <thead>
-            <tr>
-              <th>生産年 / Он</th>
-              <th>駆動 / Хөдөлгүүр</th>
-              <th>走行距離 / Явсан зам</th>
-              <th>色 / Өнгө</th>
-              <th>入荷年 / Оруулсан он</th>
-              <th class="right">価格 / Үнэ</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody"></tbody>
-        </table>
-      </div>
-      <div class="note" id="tableNote"></div>
-    </div>
-
-  </div><!-- /main-content -->
-</div>
-
-<script>
-// ══════════════════════════════════════════════════════
-//  データ読み込み（prices.json）
-// ══════════════════════════════════════════════════════
-let DB = null;      // prices
-let MODELS = null;  // models map
-
-const MAKER_LABELS = {
-  toyota:"Toyota", nissan:"Nissan", mitsubishi:"Mitsubishi",
-  honda:"Honda", subaru:"Subaru", suzuki:"Suzuki", lexus:"Lexus",
-  hyundai:"Hyundai", kia:"Kia", bmw:"BMW",
-  "mercedes-benz":"Mercedes-Benz", "land-rover":"Land Rover",
-  volkswagen:"Volkswagen", audi:"Audi", mazda:"Mazda", dongfeng:"Dongfeng / 东风"
-};
-
-async function loadData() {
-  try {
-    const res = await fetch("data/prices.json?v=" + Date.now());
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const json = await res.json();
-
-    DB     = json.prices;
-    MODELS = json.models;
-
-    // UI初期化
-    initMakerSelect(json.models);
-    initYearSelect();
-
-    // バッジ更新
-    const badge = document.getElementById("dataBadge");
-    badge.textContent = "🕐 UNEGUI.MN — " + (json.meta?.updated_at || "最新") + " データ";
-    badge.className = "data-badge";
-
-    document.getElementById("loading-screen").style.display = "none";
-    document.getElementById("main-content").style.display   = "block";
-
-  } catch(e) {
-    document.getElementById("loading-screen").style.display = "none";
-    document.getElementById("error-screen").style.display   = "block";
-    document.getElementById("error-msg").textContent        = e.message;
-    const badge = document.getElementById("dataBadge");
-    badge.textContent = "⚠️ 読み込みエラー";
-    badge.className = "data-badge error";
+{
+  "meta": {
+    "updated_at": "2026-06",
+    "source": "UNEGUI.MN",
+    "note": "毎月このファイルを更新してGitHubにプッシュしてください。updated_atも忘れずに変更すること。"
+  },
+  "models": {
+    "toyota": [
+      {"l": "Harrier 80系 (ZSU/MXUA)", "s": "harrier"},
+      {"l": "Land Cruiser 200", "s": "land-cruiser-200"},
+      {"l": "Land Cruiser 100", "s": "land-cruiser-100"},
+      {"l": "Prado 150 (GRJ/KDJ150)", "s": "land-cruiser-prado-150"},
+      {"l": "Alphard 30系", "s": "alphard-30"},
+      {"l": "Vellfire 30系", "s": "vellfire-30"},
+      {"l": "Prius 50系", "s": "prius-50"},
+      {"l": "Prius 41系", "s": "prius-41"},
+      {"l": "Aqua / Prius C", "s": "aqua"},
+      {"l": "RAV4 50系", "s": "rav4-50"},
+      {"l": "Camry 70系", "s": "camry-70"},
+      {"l": "Corolla Axio", "s": "corolla-axio"},
+      {"l": "Hiace 200系", "s": "hiace-200"},
+      {"l": "Highlander / Kluger", "s": "highlander"},
+      {"l": "Fortuner", "s": "fortuner"},
+      {"l": "Hilux", "s": "hilux"}
+    ],
+    "nissan": [
+      {"l": "X-Trail T32", "s": "x-trail-t32"},
+      {"l": "X-Trail T31", "s": "x-trail-t31"},
+      {"l": "Patrol Y62", "s": "patrol-y62"},
+      {"l": "Patrol Y61", "s": "patrol-y61"},
+      {"l": "Elgrand E52", "s": "elgrand-e52"},
+      {"l": "Serena C27", "s": "serena-c27"}
+    ],
+    "mitsubishi": [
+      {"l": "Pajero V80/V90", "s": "pajero-v80"},
+      {"l": "Pajero V60/V70", "s": "pajero-v60"},
+      {"l": "Outlander GF", "s": "outlander-gf"},
+      {"l": "Delica D:5", "s": "delica-d5"}
+    ],
+    "honda": [
+      {"l": "CR-V 5代目 (RW/RT)", "s": "cr-v-5"},
+      {"l": "CR-V 4代目 (RE)", "s": "cr-v-4"},
+      {"l": "Odyssey RC", "s": "odyssey"}
+    ],
+    "subaru": [
+      {"l": "Forester SJ", "s": "forester-sj"},
+      {"l": "Outback BS", "s": "outback-bs"}
+    ],
+    "suzuki": [
+      {"l": "Jimny JB64/JB74", "s": "jimny-jb64"},
+      {"l": "Jimny JB23", "s": "jimny-jb23"}
+    ],
+    "lexus": [
+      {"l": "LX570 / LX600 (URJ201)", "s": "lx-570"},
+      {"l": "LX470 (UZJ100)", "s": "lx-470"},
+      {"l": "GX460 (GRJ158)", "s": "gx-460"},
+      {"l": "GX470 (UZJ120)", "s": "gx-470"},
+      {"l": "RX AL20（4代目）", "s": "rx-al20"},
+      {"l": "RX AL10（3代目）", "s": "rx-al10"},
+      {"l": "RX450h（GYL2#）", "s": "rx450h"},
+      {"l": "NX AZ10（初代）", "s": "nx-az10"},
+      {"l": "ES AXZH10（7代目）", "s": "es-axzh10"}
+    ],
+    "hyundai": [
+      {"l": "Santa Fe TM（4代目）", "s": "santa-fe-tm"},
+      {"l": "Palisade LX2", "s": "palisade"},
+      {"l": "Tucson NX4（4代目）", "s": "tucson-nx4"}
+    ],
+    "kia": [
+      {"l": "Sorento MQ4", "s": "sorento-mq4"},
+      {"l": "Sportage QL", "s": "sportage-ql"}
+    ],
+    "bmw": [
+      {"l": "X5 F15（2代目）", "s": "x5-f15"},
+      {"l": "X5 G05（3代目）", "s": "x5-g05"},
+      {"l": "X3 F25（2代目）", "s": "x3-f25"}
+    ],
+    "mercedes-benz": [
+      {"l": "G-Class W463", "s": "g-class-w463"},
+      {"l": "GLE W166", "s": "gle-w166"},
+      {"l": "GLS X166", "s": "gls-x166"},
+      {"l": "GLC X253", "s": "glc-x253"}
+    ],
+    "land-rover": [
+      {"l": "Discovery 4 L319", "s": "discovery-4"},
+      {"l": "Range Rover L405", "s": "range-rover-l405"},
+      {"l": "Defender L316", "s": "defender-l316"}
+    ],
+    "volkswagen": [
+      {"l": "Tiguan AD1（2代目）", "s": "tiguan-ad1"},
+      {"l": "Touareg 7P（2代目）", "s": "touareg-7p"}
+    ],
+    "audi": [
+      {"l": "Q7 4M（2代目）", "s": "q7-4m"},
+      {"l": "Q5 FY（2代目）", "s": "q5-fy"}
+    ],
+    "mazda": [
+      {"l": "CX-5 KF（2代目）", "s": "cx-5-kf"},
+      {"l": "CX-5 KE（初代）", "s": "cx-5-ke"},
+      {"l": "CX-9", "s": "cx-9"}
+    ],
+    "dongfeng": [
+      {"l": "Aeolus AX7", "s": "aeolus-ax7"},
+      {"l": "Glory iX5", "s": "glory-ix5"},
+      {"l": "Glory iX7", "s": "glory-ix7"},
+      {"l": "Forthing T5", "s": "forthing-t5"},
+      {"l": "Rich 6 / Пикап", "s": "rich6"}
+    ]
+  },
+  "prices": {
+    "lexus|rx450h": [
+      {"year":2009,"drive":"4WD","mileage":"200,000 km","color":"白","import_year":2019,"price":33.0},
+      {"year":2010,"drive":"4WD","mileage":"180,000 km","color":"銀","import_year":2022,"price":39.0},
+      {"year":2011,"drive":"4WD","mileage":"165,000 km","color":"白","import_year":2025,"price":98.0},
+      {"year":2012,"drive":"4WD","mileage":"155,000 km","color":"銀","import_year":2025,"price":75.0},
+      {"year":2013,"drive":"4WD","mileage":"142,000 km","color":"黒","import_year":2025,"price":52.0},
+      {"year":2014,"drive":"4WD","mileage":"130,000 km","color":"白","import_year":2024,"price":47.9},
+      {"year":2015,"drive":"4WD","mileage":"120,000 km","color":"白","import_year":2024,"price":51.0},
+      {"year":2016,"drive":"4WD","mileage":"108,000 km","color":"白","import_year":2025,"price":89.5},
+      {"year":2016,"drive":"4WD","mileage":"152,000 km","color":"白","import_year":2024,"price":73.0},
+      {"year":2017,"drive":"4WD","mileage":"88,000 km","color":"白","import_year":2025,"price":115.0},
+      {"year":2017,"drive":"4WD","mileage":"88,000 km","color":"黒","import_year":2023,"price":47.9},
+      {"year":2017,"drive":"4WD","mileage":"67,000 km","color":"銀","import_year":2024,"price":108.0},
+      {"year":2019,"drive":"4WD","mileage":"100,000 km","color":"白","import_year":2025,"price":119.0},
+      {"year":2019,"drive":"4WD","mileage":"52,000 km","color":"白","import_year":2022,"price":42.5},
+      {"year":2020,"drive":"4WD","mileage":"40,000 km","color":"白","import_year":2026,"price":125.0},
+      {"year":2021,"drive":"4WD","mileage":"25,000 km","color":"白","import_year":2026,"price":125.0}
+    ],
+    "toyota|harrier": [
+      {"year":2007,"drive":"4WD","mileage":"195,000 km","color":"銀","import_year":2020,"price":26.0},
+      {"year":2008,"drive":"4WD","mileage":"144,000 km","color":"白","import_year":2024,"price":55.9},
+      {"year":2015,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2024,"price":55.0},
+      {"year":2015,"drive":"4WD","mileage":"167,000 km","color":"白","import_year":2025,"price":46.0},
+      {"year":2015,"drive":"4WD","mileage":"119,600 km","color":"白","import_year":2024,"price":89.0},
+      {"year":2016,"drive":"4WD","mileage":"130,000 km","color":"白","import_year":2024,"price":55.0},
+      {"year":2016,"drive":"4WD","mileage":"130,000 km","color":"黒","import_year":2024,"price":67.5},
+      {"year":2017,"drive":"4WD","mileage":"82,000 km","color":"銀","import_year":2026,"price":71.5},
+      {"year":2017,"drive":"4WD","mileage":"86,000 km","color":"白","import_year":2025,"price":69.9},
+      {"year":2017,"drive":"4WD","mileage":"69,000 km","color":"白","import_year":2025,"price":69.0},
+      {"year":2018,"drive":"4WD","mileage":"86,000 km","color":"白","import_year":2025,"price":69.9},
+      {"year":2023,"drive":"4WD","mileage":"15,000 km","color":"白","import_year":2025,"price":93.0}
+    ],
+    "toyota|land-cruiser-200": [
+      {"year":2008,"drive":"4WD","mileage":"220,000 km","color":"白","import_year":2013,"price":72.0},
+      {"year":2010,"drive":"4WD","mileage":"190,000 km","color":"銀","import_year":2015,"price":95.0},
+      {"year":2012,"drive":"4WD","mileage":"165,000 km","color":"黒","import_year":2016,"price":115.0},
+      {"year":2014,"drive":"4WD","mileage":"140,000 km","color":"白","import_year":2018,"price":138.0},
+      {"year":2015,"drive":"4WD","mileage":"120,000 km","color":"白","import_year":2019,"price":155.0},
+      {"year":2016,"drive":"4WD","mileage":"100,000 km","color":"銀","import_year":2020,"price":170.0},
+      {"year":2017,"drive":"4WD","mileage":"85,000 km","color":"白","import_year":2021,"price":190.0},
+      {"year":2018,"drive":"4WD","mileage":"70,000 km","color":"黒","import_year":2022,"price":210.0},
+      {"year":2019,"drive":"4WD","mileage":"55,000 km","color":"白","import_year":2023,"price":230.0},
+      {"year":2020,"drive":"4WD","mileage":"40,000 km","color":"白","import_year":2023,"price":250.0}
+    ],
+    "toyota|land-cruiser-100": [
+      {"year":2002,"drive":"4WD","mileage":"230,000 km","color":"銀","import_year":2008,"price":35.0},
+      {"year":2004,"drive":"4WD","mileage":"210,000 km","color":"白","import_year":2009,"price":40.0},
+      {"year":2006,"drive":"4WD","mileage":"185,000 km","color":"銀","import_year":2011,"price":47.0},
+      {"year":2008,"drive":"4WD","mileage":"155,000 km","color":"黒","import_year":2013,"price":56.0}
+    ],
+    "toyota|land-cruiser-prado-150": [
+      {"year":2016,"drive":"4WD","mileage":"180,000 km","color":"白","import_year":2022,"price":44.0},
+      {"year":2016,"drive":"2WD","mileage":"180,000 km","color":"黒","import_year":2022,"price":38.0},
+      {"year":2019,"drive":"4WD","mileage":"90,000 km","color":"白","import_year":2025,"price":105.0},
+      {"year":2021,"drive":"4WD","mileage":"65,000 km","color":"白","import_year":2025,"price":120.0},
+      {"year":2023,"drive":"4WD","mileage":"29,000 km","color":"白","import_year":2024,"price":136.0},
+      {"year":2024,"drive":"4WD","mileage":"2,000 km","color":"白","import_year":2025,"price":45.0}
+    ],
+    "toyota|alphard-30": [
+      {"year":2013,"drive":"2WD","mileage":"184,000 km","color":"白","import_year":2022,"price":37.5},
+      {"year":2014,"drive":"4WD","mileage":"161,000 km","color":"白","import_year":2025,"price":54.0},
+      {"year":2014,"drive":"4WD","mileage":"212,000 km","color":"白","import_year":2025,"price":41.5},
+      {"year":2015,"drive":"4WD","mileage":"189,000 km","color":"白","import_year":2025,"price":62.0},
+      {"year":2018,"drive":"4WD","mileage":"86,000 km","color":"白","import_year":2025,"price":105.0}
+    ],
+    "toyota|vellfire-30": [
+      {"year":2015,"drive":"4WD","mileage":"150,000 km","color":"白","import_year":2019,"price":42.0},
+      {"year":2016,"drive":"4WD","mileage":"130,000 km","color":"黒","import_year":2020,"price":50.0},
+      {"year":2017,"drive":"4WD","mileage":"115,000 km","color":"白","import_year":2021,"price":58.0},
+      {"year":2018,"drive":"4WD","mileage":"98,000 km","color":"銀","import_year":2022,"price":66.0},
+      {"year":2019,"drive":"4WD","mileage":"82,000 km","color":"白","import_year":2023,"price":75.0}
+    ],
+    "toyota|prius-50": [
+      {"year":2016,"drive":"2WD","mileage":"130,000 km","color":"白","import_year":2020,"price":25.0},
+      {"year":2017,"drive":"2WD","mileage":"115,000 km","color":"銀","import_year":2020,"price":27.0},
+      {"year":2017,"drive":"4WD","mileage":"110,000 km","color":"白","import_year":2021,"price":30.0},
+      {"year":2018,"drive":"4WD","mileage":"95,000 km","color":"白","import_year":2022,"price":33.0},
+      {"year":2019,"drive":"4WD","mileage":"80,000 km","color":"銀","import_year":2022,"price":36.0},
+      {"year":2020,"drive":"4WD","mileage":"65,000 km","color":"黒","import_year":2023,"price":40.0},
+      {"year":2021,"drive":"2WD","mileage":"50,000 km","color":"白","import_year":2024,"price":44.0},
+      {"year":2022,"drive":"2WD","mileage":"35,000 km","color":"銀","import_year":2025,"price":49.0}
+    ],
+    "toyota|prius-41": [
+      {"year":2011,"drive":"2WD","mileage":"200,000 km","color":"白","import_year":2025,"price":20.0},
+      {"year":2012,"drive":"2WD","mileage":"140,000 km","color":"白","import_year":2025,"price":20.0},
+      {"year":2013,"drive":"2WD","mileage":"128,000 km","color":"銀","import_year":2017,"price":18.0},
+      {"year":2015,"drive":"2WD","mileage":"120,000 km","color":"白","import_year":2025,"price":22.0},
+      {"year":2015,"drive":"4WD","mileage":"118,000 km","color":"白","import_year":2019,"price":25.0},
+      {"year":2016,"drive":"2WD","mileage":"105,000 km","color":"白","import_year":2020,"price":26.5},
+      {"year":2016,"drive":"4WD","mileage":"103,000 km","color":"銀","import_year":2020,"price":29.0}
+    ],
+    "toyota|aqua": [
+      {"year":2012,"drive":"2WD","mileage":"240,000 km","color":"白","import_year":2022,"price":12.5},
+      {"year":2014,"drive":"2WD","mileage":"150,000 km","color":"銀","import_year":2018,"price":16.5},
+      {"year":2015,"drive":"4WD","mileage":"125,000 km","color":"白","import_year":2019,"price":18.5},
+      {"year":2016,"drive":"2WD","mileage":"110,000 km","color":"赤","import_year":2020,"price":19.0},
+      {"year":2017,"drive":"4WD","mileage":"95,000 km","color":"白","import_year":2021,"price":21.5},
+      {"year":2018,"drive":"4WD","mileage":"148,000 km","color":"白","import_year":2024,"price":20.0},
+      {"year":2019,"drive":"2WD","mileage":"80,000 km","color":"青","import_year":2022,"price":24.0}
+    ],
+    "toyota|rav4-50": [
+      {"year":2019,"drive":"4WD","mileage":"77,000 km","color":"白","import_year":2025,"price":19.0},
+      {"year":2019,"drive":"2WD","mileage":"90,000 km","color":"銀","import_year":2022,"price":35.0},
+      {"year":2020,"drive":"4WD","mileage":"72,000 km","color":"白","import_year":2022,"price":42.0},
+      {"year":2021,"drive":"4WD","mileage":"55,000 km","color":"白","import_year":2023,"price":47.0},
+      {"year":2022,"drive":"4WD","mileage":"38,000 km","color":"グレー","import_year":2024,"price":52.0}
+    ],
+    "toyota|camry-70": [
+      {"year":2018,"drive":"2WD","mileage":"110,000 km","color":"白","import_year":2021,"price":33.0},
+      {"year":2019,"drive":"2WD","mileage":"95,000 km","color":"銀","import_year":2022,"price":37.0},
+      {"year":2020,"drive":"2WD","mileage":"80,000 km","color":"黒","import_year":2022,"price":42.0},
+      {"year":2021,"drive":"2WD","mileage":"65,000 km","color":"白","import_year":2023,"price":47.0},
+      {"year":2022,"drive":"2WD","mileage":"48,000 km","color":"グレー","import_year":2024,"price":52.0}
+    ],
+    "toyota|corolla-axio": [
+      {"year":2013,"drive":"4WD","mileage":"162,000 km","color":"白","import_year":2017,"price":14.5},
+      {"year":2014,"drive":"4WD","mileage":"148,000 km","color":"銀","import_year":2018,"price":17.0},
+      {"year":2015,"drive":"4WD","mileage":"132,000 km","color":"白","import_year":2019,"price":20.0},
+      {"year":2016,"drive":"4WD","mileage":"118,000 km","color":"白","import_year":2020,"price":23.0},
+      {"year":2017,"drive":"4WD","mileage":"103,000 km","color":"白","import_year":2021,"price":27.0}
+    ],
+    "toyota|hiace-200": [
+      {"year":2012,"drive":"2WD","mileage":"240,000 km","color":"白","import_year":2016,"price":28.0},
+      {"year":2014,"drive":"4WD","mileage":"210,000 km","color":"白","import_year":2018,"price":40.0},
+      {"year":2016,"drive":"4WD","mileage":"175,000 km","color":"白","import_year":2019,"price":47.0},
+      {"year":2018,"drive":"4WD","mileage":"140,000 km","color":"白","import_year":2021,"price":55.0},
+      {"year":2020,"drive":"4WD","mileage":"95,000 km","color":"白","import_year":2023,"price":65.0}
+    ],
+    "toyota|highlander": [
+      {"year":2011,"drive":"4WD","mileage":"125,900 km","color":"白","import_year":2011,"price":32.0},
+      {"year":2014,"drive":"4WD","mileage":"165,000 km","color":"白","import_year":2018,"price":34.0},
+      {"year":2016,"drive":"4WD","mileage":"135,000 km","color":"黒","import_year":2019,"price":43.0},
+      {"year":2018,"drive":"4WD","mileage":"105,000 km","color":"白","import_year":2021,"price":55.0},
+      {"year":2020,"drive":"4WD","mileage":"75,000 km","color":"白","import_year":2023,"price":70.0}
+    ],
+    "toyota|fortuner": [
+      {"year":2016,"drive":"4WD","mileage":"160,000 km","color":"白","import_year":2019,"price":45.0},
+      {"year":2018,"drive":"4WD","mileage":"128,000 km","color":"白","import_year":2021,"price":58.0},
+      {"year":2020,"drive":"4WD","mileage":"95,000 km","color":"白","import_year":2022,"price":72.0},
+      {"year":2021,"drive":"4WD","mileage":"78,000 km","color":"黒","import_year":2023,"price":82.0}
+    ],
+    "toyota|hilux": [
+      {"year":2016,"drive":"4WD","mileage":"150,000 km","color":"白","import_year":2019,"price":38.0},
+      {"year":2018,"drive":"4WD","mileage":"122,000 km","color":"黒","import_year":2021,"price":50.0},
+      {"year":2020,"drive":"4WD","mileage":"92,000 km","color":"白","import_year":2023,"price":65.0}
+    ],
+    "nissan|x-trail-t32": [
+      {"year":2014,"drive":"4WD","mileage":"168,000 km","color":"白","import_year":2018,"price":23.0},
+      {"year":2015,"drive":"4WD","mileage":"153,000 km","color":"黒","import_year":2019,"price":26.0},
+      {"year":2016,"drive":"4WD","mileage":"138,000 km","color":"白","import_year":2019,"price":29.0},
+      {"year":2017,"drive":"4WD","mileage":"123,000 km","color":"銀","import_year":2020,"price":33.0},
+      {"year":2018,"drive":"4WD","mileage":"108,000 km","color":"白","import_year":2021,"price":37.0},
+      {"year":2019,"drive":"4WD","mileage":"93,000 km","color":"黒","import_year":2022,"price":42.0},
+      {"year":2020,"drive":"4WD","mileage":"78,000 km","color":"白","import_year":2023,"price":47.0},
+      {"year":2021,"drive":"4WD","mileage":"60,000 km","color":"グレー","import_year":2023,"price":52.0}
+    ],
+    "nissan|x-trail-t31": [
+      {"year":2008,"drive":"4WD","mileage":"200,000 km","color":"銀","import_year":2013,"price":12.0},
+      {"year":2010,"drive":"4WD","mileage":"180,000 km","color":"白","import_year":2015,"price":15.0},
+      {"year":2012,"drive":"4WD","mileage":"160,000 km","color":"黒","import_year":2016,"price":18.0},
+      {"year":2013,"drive":"4WD","mileage":"145,000 km","color":"銀","import_year":2017,"price":21.0}
+    ],
+    "nissan|patrol-y62": [
+      {"year":2012,"drive":"4WD","mileage":"180,000 km","color":"白","import_year":2016,"price":68.0},
+      {"year":2015,"drive":"4WD","mileage":"152,000 km","color":"黒","import_year":2019,"price":92.0},
+      {"year":2018,"drive":"4WD","mileage":"115,000 km","color":"銀","import_year":2021,"price":115.0},
+      {"year":2020,"drive":"4WD","mileage":"88,000 km","color":"白","import_year":2022,"price":135.0}
+    ],
+    "nissan|patrol-y61": [
+      {"year":2005,"drive":"4WD","mileage":"210,000 km","color":"白","import_year":2010,"price":22.0},
+      {"year":2008,"drive":"4WD","mileage":"188,000 km","color":"銀","import_year":2012,"price":28.0},
+      {"year":2010,"drive":"4WD","mileage":"168,000 km","color":"黒","import_year":2014,"price":35.0}
+    ],
+    "nissan|elgrand-e52": [
+      {"year":2010,"drive":"4WD","mileage":"190,000 km","color":"白","import_year":2014,"price":24.0},
+      {"year":2012,"drive":"4WD","mileage":"170,000 km","color":"銀","import_year":2016,"price":29.0},
+      {"year":2014,"drive":"4WD","mileage":"150,000 km","color":"黒","import_year":2018,"price":35.0},
+      {"year":2016,"drive":"4WD","mileage":"128,000 km","color":"白","import_year":2019,"price":42.0},
+      {"year":2018,"drive":"4WD","mileage":"105,000 km","color":"白","import_year":2021,"price":50.0}
+    ],
+    "nissan|serena-c27": [
+      {"year":2016,"drive":"2WD","mileage":"150,000 km","color":"白","import_year":2020,"price":22.0},
+      {"year":2018,"drive":"2WD","mileage":"120,000 km","color":"銀","import_year":2022,"price":28.0},
+      {"year":2020,"drive":"2WD","mileage":"88,000 km","color":"白","import_year":2023,"price":35.0}
+    ],
+    "mitsubishi|pajero-v80": [
+      {"year":2008,"drive":"4WD","mileage":"210,000 km","color":"銀","import_year":2013,"price":22.0},
+      {"year":2012,"drive":"4WD","mileage":"170,000 km","color":"黒","import_year":2016,"price":33.0},
+      {"year":2015,"drive":"4WD","mileage":"140,000 km","color":"白","import_year":2019,"price":44.0},
+      {"year":2018,"drive":"4WD","mileage":"108,000 km","color":"白","import_year":2021,"price":58.0},
+      {"year":2019,"drive":"4WD","mileage":"92,000 km","color":"黒","import_year":2022,"price":65.0}
+    ],
+    "mitsubishi|pajero-v60": [
+      {"year":2004,"drive":"4WD","mileage":"215,000 km","color":"白","import_year":2009,"price":12.0},
+      {"year":2006,"drive":"4WD","mileage":"195,000 km","color":"銀","import_year":2011,"price":15.0},
+      {"year":2008,"drive":"4WD","mileage":"175,000 km","color":"黒","import_year":2013,"price":19.0}
+    ],
+    "mitsubishi|outlander-gf": [
+      {"year":2015,"drive":"4WD","mileage":"151,000 km","color":"白","import_year":2025,"price":28.0},
+      {"year":2017,"drive":"4WD","mileage":"118,000 km","color":"赤","import_year":2020,"price":36.0},
+      {"year":2019,"drive":"4WD","mileage":"88,000 km","color":"グレー","import_year":2022,"price":46.0}
+    ],
+    "mitsubishi|delica-d5": [
+      {"year":2008,"drive":"4WD","mileage":"205,000 km","color":"白","import_year":2013,"price":20.0},
+      {"year":2010,"drive":"4WD","mileage":"185,000 km","color":"銀","import_year":2015,"price":25.0},
+      {"year":2012,"drive":"4WD","mileage":"165,000 km","color":"黒","import_year":2016,"price":31.0},
+      {"year":2014,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2018,"price":38.0},
+      {"year":2016,"drive":"4WD","mileage":"125,000 km","color":"白","import_year":2020,"price":46.0}
+    ],
+    "honda|cr-v-5": [
+      {"year":2017,"drive":"4WD","mileage":"140,000 km","color":"白","import_year":2020,"price":28.0},
+      {"year":2018,"drive":"4WD","mileage":"125,000 km","color":"黒","import_year":2021,"price":33.0},
+      {"year":2019,"drive":"4WD","mileage":"110,000 km","color":"白","import_year":2022,"price":38.0},
+      {"year":2020,"drive":"4WD","mileage":"95,000 km","color":"赤","import_year":2022,"price":43.0},
+      {"year":2021,"drive":"4WD","mileage":"78,000 km","color":"白","import_year":2023,"price":49.0}
+    ],
+    "honda|cr-v-4": [
+      {"year":2012,"drive":"4WD","mileage":"172,000 km","color":"白","import_year":2016,"price":16.0},
+      {"year":2013,"drive":"4WD","mileage":"158,000 km","color":"銀","import_year":2017,"price":19.0},
+      {"year":2015,"drive":"4WD","mileage":"135,000 km","color":"黒","import_year":2019,"price":24.0}
+    ],
+    "honda|odyssey": [
+      {"year":2013,"drive":"2WD","mileage":"175,000 km","color":"白","import_year":2017,"price":18.0},
+      {"year":2015,"drive":"2WD","mileage":"150,000 km","color":"銀","import_year":2019,"price":24.0},
+      {"year":2017,"drive":"2WD","mileage":"125,000 km","color":"白","import_year":2020,"price":30.0},
+      {"year":2019,"drive":"2WD","mileage":"98,000 km","color":"黒","import_year":2022,"price":37.0}
+    ],
+    "subaru|forester-sj": [
+      {"year":2013,"drive":"4WD","mileage":"178,000 km","color":"白","import_year":2017,"price":18.0},
+      {"year":2015,"drive":"4WD","mileage":"148,000 km","color":"黒","import_year":2019,"price":24.0},
+      {"year":2017,"drive":"4WD","mileage":"118,000 km","color":"緑","import_year":2020,"price":32.0}
+    ],
+    "subaru|outback-bs": [
+      {"year":2015,"drive":"4WD","mileage":"160,000 km","color":"白","import_year":2019,"price":23.0},
+      {"year":2017,"drive":"4WD","mileage":"135,000 km","color":"銀","import_year":2020,"price":29.0},
+      {"year":2019,"drive":"4WD","mileage":"108,000 km","color":"黒","import_year":2022,"price":37.0}
+    ],
+    "suzuki|jimny-jb64": [
+      {"year":2018,"drive":"4WD","mileage":"85,000 km","color":"緑","import_year":2021,"price":28.0},
+      {"year":2019,"drive":"4WD","mileage":"70,000 km","color":"黄","import_year":2022,"price":32.0},
+      {"year":2020,"drive":"4WD","mileage":"55,000 km","color":"黒","import_year":2022,"price":36.0},
+      {"year":2021,"drive":"4WD","mileage":"40,000 km","color":"緑","import_year":2023,"price":41.0},
+      {"year":2022,"drive":"4WD","mileage":"24,000 km","color":"白","import_year":2024,"price":47.0}
+    ],
+    "suzuki|jimny-jb23": [
+      {"year":2008,"drive":"4WD","mileage":"192,000 km","color":"白","import_year":2013,"price":11.0},
+      {"year":2010,"drive":"4WD","mileage":"172,000 km","color":"緑","import_year":2015,"price":14.0},
+      {"year":2012,"drive":"4WD","mileage":"152,000 km","color":"黄","import_year":2016,"price":17.0},
+      {"year":2014,"drive":"4WD","mileage":"132,000 km","color":"白","import_year":2018,"price":21.0},
+      {"year":2016,"drive":"4WD","mileage":"112,000 km","color":"黒","import_year":2020,"price":25.0}
+    ],
+    "lexus|lx-570": [
+      {"year":2012,"drive":"4WD","mileage":"165,000 km","color":"黒","import_year":2016,"price":105.0},
+      {"year":2015,"drive":"4WD","mileage":"138,000 km","color":"白","import_year":2019,"price":132.0},
+      {"year":2018,"drive":"4WD","mileage":"98,000 km","color":"白","import_year":2021,"price":165.0},
+      {"year":2020,"drive":"4WD","mileage":"72,000 km","color":"黒","import_year":2022,"price":185.0},
+      {"year":2016,"drive":"4WD","mileage":"152,000 km","color":"白","import_year":2026,"price":210.0}
+    ],
+    "lexus|lx-470": [
+      {"year":2003,"drive":"4WD","mileage":"230,000 km","color":"白","import_year":2009,"price":30.0},
+      {"year":2006,"drive":"4WD","mileage":"198,000 km","color":"銀","import_year":2012,"price":40.0},
+      {"year":2008,"drive":"4WD","mileage":"170,000 km","color":"黒","import_year":2014,"price":50.0}
+    ],
+    "lexus|gx-460": [
+      {"year":2012,"drive":"4WD","mileage":"168,000 km","color":"銀","import_year":2016,"price":48.0},
+      {"year":2015,"drive":"4WD","mileage":"138,000 km","color":"黒","import_year":2019,"price":65.0},
+      {"year":2018,"drive":"4WD","mileage":"102,000 km","color":"白","import_year":2021,"price":82.0},
+      {"year":2020,"drive":"4WD","mileage":"78,000 km","color":"グレー","import_year":2022,"price":95.0}
+    ],
+    "lexus|gx-470": [
+      {"year":2005,"drive":"4WD","mileage":"212,000 km","color":"白","import_year":2011,"price":22.0},
+      {"year":2008,"drive":"4WD","mileage":"182,000 km","color":"銀","import_year":2014,"price":30.0}
+    ],
+    "lexus|rx-al20": [
+      {"year":2016,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2020,"price":48.0},
+      {"year":2018,"drive":"4WD","mileage":"118,000 km","color":"黒","import_year":2021,"price":62.0},
+      {"year":2020,"drive":"4WD","mileage":"88,000 km","color":"白","import_year":2022,"price":78.0},
+      {"year":2022,"drive":"4WD","mileage":"55,000 km","color":"グレー","import_year":2024,"price":190.0},
+      {"year":2017,"drive":"4WD","mileage":"67,000 km","color":"銀","import_year":2024,"price":108.0}
+    ],
+    "lexus|rx-al10": [
+      {"year":2010,"drive":"4WD","mileage":"188,000 km","color":"白","import_year":2015,"price":28.0},
+      {"year":2013,"drive":"4WD","mileage":"158,000 km","color":"銀","import_year":2018,"price":36.0},
+      {"year":2015,"drive":"4WD","mileage":"133,000 km","color":"黒","import_year":2019,"price":42.0}
+    ],
+    "lexus|nx-az10": [
+      {"year":2015,"drive":"4WD","mileage":"155,000 km","color":"白","import_year":2019,"price":32.0},
+      {"year":2017,"drive":"4WD","mileage":"128,000 km","color":"銀","import_year":2020,"price":40.0},
+      {"year":2019,"drive":"4WD","mileage":"98,000 km","color":"白","import_year":2022,"price":50.0},
+      {"year":2021,"drive":"4WD","mileage":"68,000 km","color":"黒","import_year":2023,"price":62.0}
+    ],
+    "lexus|es-axzh10": [
+      {"year":2018,"drive":"2WD","mileage":"151,000 km","color":"白","import_year":2025,"price":48.0},
+      {"year":2019,"drive":"2WD","mileage":"105,000 km","color":"白","import_year":2022,"price":50.0},
+      {"year":2020,"drive":"2WD","mileage":"88,000 km","color":"銀","import_year":2022,"price":45.0},
+      {"year":2021,"drive":"2WD","mileage":"68,000 km","color":"黒","import_year":2023,"price":58.0},
+      {"year":2022,"drive":"2WD","mileage":"48,000 km","color":"白","import_year":2024,"price":65.0}
+    ],
+    "hyundai|santa-fe-tm": [
+      {"year":2019,"drive":"4WD","mileage":"118,000 km","color":"白","import_year":2022,"price":32.0},
+      {"year":2020,"drive":"4WD","mileage":"103,000 km","color":"黒","import_year":2022,"price":37.0},
+      {"year":2021,"drive":"4WD","mileage":"85,000 km","color":"白","import_year":2023,"price":43.0},
+      {"year":2022,"drive":"4WD","mileage":"65,000 km","color":"グレー","import_year":2024,"price":49.0}
+    ],
+    "hyundai|palisade": [
+      {"year":2019,"drive":"4WD","mileage":"108,000 km","color":"白","import_year":2022,"price":44.0},
+      {"year":2020,"drive":"4WD","mileage":"93,000 km","color":"黒","import_year":2022,"price":51.0},
+      {"year":2021,"drive":"4WD","mileage":"75,000 km","color":"白","import_year":2023,"price":59.0}
+    ],
+    "hyundai|tucson-nx4": [
+      {"year":2021,"drive":"4WD","mileage":"78,000 km","color":"白","import_year":2023,"price":32.0},
+      {"year":2022,"drive":"4WD","mileage":"58,000 km","color":"グレー","import_year":2024,"price":38.0}
+    ],
+    "kia|sorento-mq4": [
+      {"year":2021,"drive":"4WD","mileage":"82,000 km","color":"白","import_year":2023,"price":43.0},
+      {"year":2022,"drive":"4WD","mileage":"62,000 km","color":"黒","import_year":2024,"price":51.0}
+    ],
+    "kia|sportage-ql": [
+      {"year":2017,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2020,"price":24.0},
+      {"year":2019,"drive":"4WD","mileage":"118,000 km","color":"銀","import_year":2022,"price":30.0},
+      {"year":2021,"drive":"4WD","mileage":"85,000 km","color":"白","import_year":2023,"price":37.0}
+    ],
+    "bmw|x5-f15": [
+      {"year":2014,"drive":"4WD","mileage":"170,000 km","color":"白","import_year":2018,"price":48.0},
+      {"year":2016,"drive":"4WD","mileage":"140,000 km","color":"白","import_year":2019,"price":63.0},
+      {"year":2018,"drive":"4WD","mileage":"108,000 km","color":"白","import_year":2021,"price":82.0}
+    ],
+    "bmw|x5-g05": [
+      {"year":2019,"drive":"4WD","mileage":"105,000 km","color":"白","import_year":2022,"price":88.0},
+      {"year":2020,"drive":"4WD","mileage":"88,000 km","color":"黒","import_year":2022,"price":100.0},
+      {"year":2021,"drive":"4WD","mileage":"70,000 km","color":"白","import_year":2023,"price":115.0}
+    ],
+    "bmw|x3-f25": [
+      {"year":2013,"drive":"4WD","mileage":"175,000 km","color":"白","import_year":2018,"price":28.0},
+      {"year":2016,"drive":"4WD","mileage":"145,000 km","color":"銀","import_year":2020,"price":38.0},
+      {"year":2018,"drive":"4WD","mileage":"115,000 km","color":"黒","import_year":2022,"price":50.0}
+    ],
+    "mercedes-benz|g-class-w463": [
+      {"year":2015,"drive":"4WD","mileage":"155,000 km","color":"白","import_year":2019,"price":138.0},
+      {"year":2017,"drive":"4WD","mileage":"128,000 km","color":"銀","import_year":2020,"price":168.0},
+      {"year":2019,"drive":"4WD","mileage":"102,000 km","color":"黒","import_year":2022,"price":200.0}
+    ],
+    "mercedes-benz|gle-w166": [
+      {"year":2015,"drive":"4WD","mileage":"160,000 km","color":"白","import_year":2018,"price":50.0},
+      {"year":2017,"drive":"4WD","mileage":"130,000 km","color":"白","import_year":2020,"price":65.0},
+      {"year":2019,"drive":"4WD","mileage":"98,000 km","color":"銀","import_year":2022,"price":85.0}
+    ],
+    "mercedes-benz|gls-x166": [
+      {"year":2013,"drive":"4WD","mileage":"185,000 km","color":"白","import_year":2017,"price":62.0},
+      {"year":2015,"drive":"4WD","mileage":"165,000 km","color":"黒","import_year":2019,"price":75.0},
+      {"year":2017,"drive":"4WD","mileage":"142,000 km","color":"白","import_year":2020,"price":90.0},
+      {"year":2019,"drive":"4WD","mileage":"115,000 km","color":"銀","import_year":2022,"price":108.0}
+    ],
+    "mercedes-benz|glc-x253": [
+      {"year":2016,"drive":"4WD","mileage":"148,000 km","color":"白","import_year":2020,"price":40.0},
+      {"year":2018,"drive":"4WD","mileage":"120,000 km","color":"黒","import_year":2022,"price":52.0},
+      {"year":2020,"drive":"4WD","mileage":"92,000 km","color":"白","import_year":2023,"price":68.0}
+    ],
+    "land-rover|discovery-4": [
+      {"year":2012,"drive":"4WD","mileage":"175,000 km","color":"銀","import_year":2016,"price":42.0},
+      {"year":2014,"drive":"4WD","mileage":"155,000 km","color":"黒","import_year":2018,"price":52.0},
+      {"year":2016,"drive":"4WD","mileage":"132,000 km","color":"白","import_year":2019,"price":63.0}
+    ],
+    "land-rover|range-rover-l405": [
+      {"year":2014,"drive":"4WD","mileage":"162,000 km","color":"白","import_year":2018,"price":80.0},
+      {"year":2016,"drive":"4WD","mileage":"138,000 km","color":"黒","import_year":2020,"price":100.0},
+      {"year":2018,"drive":"4WD","mileage":"112,000 km","color":"銀","import_year":2022,"price":122.0}
+    ],
+    "land-rover|defender-l316": [
+      {"year":2005,"drive":"4WD","mileage":"215,000 km","color":"緑","import_year":2010,"price":35.0},
+      {"year":2008,"drive":"4WD","mileage":"195,000 km","color":"白","import_year":2013,"price":45.0},
+      {"year":2012,"drive":"4WD","mileage":"168,000 km","color":"黒","import_year":2016,"price":58.0}
+    ],
+    "volkswagen|tiguan-ad1": [
+      {"year":2017,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2020,"price":26.0},
+      {"year":2019,"drive":"4WD","mileage":"118,000 km","color":"銀","import_year":2022,"price":33.0},
+      {"year":2021,"drive":"4WD","mileage":"85,000 km","color":"黒","import_year":2023,"price":42.0}
+    ],
+    "volkswagen|touareg-7p": [
+      {"year":2012,"drive":"4WD","mileage":"175,000 km","color":"白","import_year":2017,"price":30.0},
+      {"year":2015,"drive":"4WD","mileage":"145,000 km","color":"黒","import_year":2019,"price":40.0},
+      {"year":2017,"drive":"4WD","mileage":"120,000 km","color":"銀","import_year":2021,"price":50.0}
+    ],
+    "audi|q7-4m": [
+      {"year":2016,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2020,"price":60.0},
+      {"year":2018,"drive":"4WD","mileage":"118,000 km","color":"黒","import_year":2022,"price":78.0},
+      {"year":2020,"drive":"4WD","mileage":"88,000 km","color":"白","import_year":2023,"price":95.0}
+    ],
+    "audi|q5-fy": [
+      {"year":2018,"drive":"4WD","mileage":"128,000 km","color":"白","import_year":2021,"price":44.0},
+      {"year":2020,"drive":"4WD","mileage":"98,000 km","color":"銀","import_year":2022,"price":56.0},
+      {"year":2022,"drive":"4WD","mileage":"62,000 km","color":"黒","import_year":2024,"price":70.0}
+    ],
+    "mazda|cx-5-kf": [
+      {"year":2017,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2021,"price":24.0},
+      {"year":2019,"drive":"4WD","mileage":"115,000 km","color":"銀","import_year":2022,"price":30.0},
+      {"year":2021,"drive":"4WD","mileage":"80,000 km","color":"赤","import_year":2023,"price":38.0}
+    ],
+    "mazda|cx-5-ke": [
+      {"year":2013,"drive":"4WD","mileage":"172,000 km","color":"白","import_year":2018,"price":16.0},
+      {"year":2015,"drive":"4WD","mileage":"145,000 km","color":"銀","import_year":2019,"price":20.0},
+      {"year":2016,"drive":"4WD","mileage":"128,000 km","color":"黒","import_year":2020,"price":24.0}
+    ],
+    "mazda|cx-9": [
+      {"year":2016,"drive":"4WD","mileage":"145,000 km","color":"白","import_year":2020,"price":36.0},
+      {"year":2018,"drive":"4WD","mileage":"115,000 km","color":"赤","import_year":2022,"price":46.0},
+      {"year":2020,"drive":"4WD","mileage":"82,000 km","color":"白","import_year":2023,"price":58.0}
+    ],
+    "dongfeng|aeolus-ax7": [
+      {"year":2020,"drive":"2WD","mileage":"65,000 km","color":"白","import_year":2022,"price":14.0},
+      {"year":2021,"drive":"2WD","mileage":"50,000 km","color":"銀","import_year":2023,"price":17.0},
+      {"year":2022,"drive":"2WD","mileage":"35,000 km","color":"黒","import_year":2023,"price":20.0}
+    ],
+    "dongfeng|glory-ix5": [
+      {"year":2021,"drive":"4WD","mileage":"55,000 km","color":"白","import_year":2023,"price":18.0},
+      {"year":2022,"drive":"4WD","mileage":"40,000 km","color":"銀","import_year":2024,"price":22.0},
+      {"year":2023,"drive":"4WD","mileage":"20,000 km","color":"白","import_year":2024,"price":26.0}
+    ],
+    "dongfeng|glory-ix7": [
+      {"year":2022,"drive":"4WD","mileage":"38,000 km","color":"白","import_year":2024,"price":28.0},
+      {"year":2023,"drive":"4WD","mileage":"18,000 km","color":"黒","import_year":2024,"price":33.0}
+    ],
+    "dongfeng|forthing-t5": [
+      {"year":2021,"drive":"2WD","mileage":"58,000 km","color":"白","import_year":2023,"price":16.0},
+      {"year":2022,"drive":"2WD","mileage":"42,000 km","color":"銀","import_year":2023,"price":19.0},
+      {"year":2023,"drive":"2WD","mileage":"22,000 km","color":"白","import_year":2024,"price":23.0}
+    ],
+    "dongfeng|rich6": [
+      {"year":2020,"drive":"4WD","mileage":"88,000 km","color":"白","import_year":2022,"price":18.0},
+      {"year":2021,"drive":"4WD","mileage":"68,000 km","color":"銀","import_year":2023,"price":22.0},
+      {"year":2022,"drive":"4WD","mileage":"45,000 km","color":"黒","import_year":2024,"price":26.0}
+    ]
   }
 }
-
-function initMakerSelect(models) {
-  const sel = document.getElementById("maker");
-  Object.keys(models).forEach(k => {
-    sel.add(new Option(MAKER_LABELS[k] || k, k));
-  });
-}
-
-function initYearSelect() {
-  const sel = document.getElementById("carYear");
-  for(let y = 2026; y >= 1990; y--) sel.add(new Option(y + "年", y));
-}
-
-// ══════════════════════════════════════════════════════
-//  UI ロジック
-// ══════════════════════════════════════════════════════
-function onMaker() {
-  const maker = document.getElementById("maker").value;
-  const ms    = document.getElementById("modelSlug");
-  ms.innerHTML = "";
-  ms.disabled  = !maker;
-  if (!maker) { ms.add(new Option("← メーカーを先に選択", "")); clearResults(); return; }
-  ms.add(new Option("車種を選択してください", ""));
-  (MODELS[maker] || []).forEach(m => ms.add(new Option(m.l, m.s)));
-  clearResults();
-}
-
-function f(v) { return v.toFixed(1) + " сая ₮"; }
-
-function clearResults() {
-  document.getElementById("resultSummary").style.display = "none";
-  document.getElementById("tableCard").style.display     = "none";
-  document.getElementById("noData").style.display        = "none";
-  document.getElementById("statusMsg").textContent       = "";
-}
-
-function doSearch() {
-  const maker     = document.getElementById("maker").value;
-  const modelSlug = document.getElementById("modelSlug").value;
-  const carYear   = parseInt(document.getElementById("carYear").value) || 0;
-  const driveType = document.getElementById("driveType").value;
-
-  if (!maker || !modelSlug) { clearResults(); return; }
-
-  const key     = maker + "|" + modelSlug;
-  const allCars = DB[key] || [];
-
-  // 駆動方式フィルタ
-  let cars = allCars.filter(c => !driveType || c.drive === driveType);
-
-  // 年式±2年フィルタ
-  let filtered = carYear > 0 ? cars.filter(c => Math.abs(c.year - carYear) <= 2) : cars;
-  if (filtered.length === 0) filtered = cars;   // ヒットなければ全件
-  filtered = filtered.sort((a, b) => a.year - b.year);
-
-  const mLabel   = (MODELS[maker] || []).find(m => m.s === modelSlug)?.l || modelSlug;
-  const makerName = MAKER_LABELS[maker] || maker;
-
-  if (filtered.length === 0) {
-    document.getElementById("noData").style.display        = "block";
-    document.getElementById("resultSummary").style.display = "none";
-    document.getElementById("tableCard").style.display     = "none";
-    document.getElementById("statusMsg").textContent       = "";
-    return;
-  }
-
-  document.getElementById("noData").style.display = "none";
-
-  // 統計計算
-  const prices = filtered.map(c => c.price);
-  const avg    = prices.reduce((a, b) => a + b, 0) / prices.length;
-  const min    = Math.min(...prices);
-  const max    = Math.max(...prices);
-
-  // サマリー
-  document.getElementById("resultSummary").style.display = "block";
-  document.getElementById("summaryModel").textContent =
-    makerName + " " + mLabel +
-    (carYear   ? " — " + carYear + "年式" : "") +
-    (driveType ? " " + driveType : "") +
-    " — " + filtered.length + "件から算出";
-  document.getElementById("sAvg").textContent   = f(avg);
-  document.getElementById("sMin").textContent   = f(min);
-  document.getElementById("sMax").textContent   = f(max);
-  document.getElementById("sRange").textContent = f(max - min);
-  document.getElementById("sCount").textContent = filtered.length + "件";
-
-  // テーブル
-  document.getElementById("tableCard").style.display = "block";
-  document.getElementById("countBadge").textContent  = filtered.length + "件";
-  document.getElementById("tableHint").textContent   = carYear > 0
-    ? "※ " + carYear + "年式 ±2年で絞り込み表示。黄色ハイライト行が指定年式と同年。"
-    : "※ 年式指定なし — 全件表示。";
-
-  const tbody = document.getElementById("tableBody");
-  tbody.innerHTML = "";
-  filtered.forEach(c => {
-    const tr      = document.createElement("tr");
-    const isMatch = carYear > 0 && c.year === carYear;
-    if (isMatch) tr.className = "yr-match";
-    tr.innerHTML =
-      "<td class='yr-cell'>" + c.year + "年</td>" +
-      "<td>" + c.drive + "</td><td>" + c.mileage + "</td><td>" + c.color + "</td>" +
-      "<td>" + c.import_year + "年</td>" +
-      "<td class='price-td'>" + c.price.toFixed(1) + " сая ₮</td>";
-    tbody.appendChild(tr);
-  });
-
-  // 平均行
-  const avgTr = document.createElement("tr");
-  avgTr.className = "avg-row";
-  avgTr.innerHTML =
-    "<td colspan='5' style='text-align:right;font-size:12px;'>📊 平均価格 / Дундаж үнэ（" + filtered.length + "件）</td>" +
-    "<td class='price-td' style='color:#1b5e20;'>" + avg.toFixed(1) + " сая ₮</td>";
-  tbody.appendChild(avgTr);
-
-  document.getElementById("tableNote").textContent =
-    "出典: UNEGUI.MN 実績データ（" + (DB._meta?.updated_at || "最新") + "）／ 価格単位: сая ₮（百万トゥグルグ）";
-  document.getElementById("statusMsg").textContent = "✅ " + filtered.length + "件ヒット";
-}
-
-function doReset() {
-  document.getElementById("maker").value       = "";
-  const ms = document.getElementById("modelSlug");
-  ms.innerHTML = "<option value=''>← メーカーを先に選択</option>";
-  ms.disabled  = true;
-  document.getElementById("carYear").value     = "";
-  document.getElementById("driveType").value   = "";
-  clearResults();
-}
-
-// 起動
-loadData();
-</script>
-</body>
-</html>
