@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DEED MOTORS — 市場価格調査ツール</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#1A1A1A;background:#f0f2f5;min-height:100vh;}
+
+header{background:#fff;border-bottom:3px solid #C8102E;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,.1);flex-wrap:wrap;gap:8px;}
+.hdr-title{font-size:17px;color:#003087;font-weight:800;}
+.hdr-sub{font-size:11px;color:#888;}
+.data-badge{background:#f0f4ff;border:1px solid #c5cfe8;border-radius:6px;padding:5px 12px;font-size:11px;color:#003087;font-weight:700;white-space:nowrap;}
+.data-badge.loading{color:#888;border-color:#ddd;background:#f8f8f8;}
+.data-badge.error{color:#c62828;border-color:#f5a0a0;background:#fde8e8;}
+
+.wrap{max-width:1100px;margin:24px auto;padding:0 20px 60px;}
+
+/* ローディング */
+#loading-screen{text-align:center;padding:60px 20px;color:#888;}
+#loading-screen .spinner{width:36px;height:36px;border:4px solid #e0e0e0;border-top-color:#003087;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#error-screen{display:none;background:#fde8e8;border:1px solid #f5a0a0;border-radius:10px;padding:24px;text-align:center;color:#c62828;margin:40px auto;max-width:500px;}
+
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.08);overflow:hidden;margin-bottom:16px;}
+.card-title{font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;background:#f8f8f8;border-bottom:1px solid #ebebeb;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+
+.sel-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;padding:16px;}
+.fg label{display:block;font-size:11px;font-weight:700;color:#444;margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em;}
+.fg select{width:100%;padding:9px 28px 9px 10px;border:1.5px solid #e0e0e0;border-radius:6px;font-size:13px;color:#1A1A1A;background:#fff;appearance:none;-webkit-appearance:none;outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 9px center;transition:border-color .15s;}
+.fg select:focus{border-color:#003087;}
+.fg select:disabled{color:#bbb;background:#f8f8f8;}
+
+.result-summary{display:none;background:linear-gradient(135deg,#003087,#1a4db5);color:#fff;border-radius:10px;padding:16px 20px;margin-bottom:16px;}
+.summary-label{font-size:11px;color:rgba(255,255,255,.65);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.summary-model{font-size:15px;font-weight:700;margin-bottom:12px;}
+.summary-nums{display:flex;gap:12px;flex-wrap:wrap;}
+.snum{background:rgba(255,255,255,.12);border-radius:8px;padding:10px 16px;text-align:center;flex:1;min-width:90px;}
+.snum .sl{font-size:10px;color:rgba(255,255,255,.6);margin-bottom:3px;}
+.snum .sv{font-size:18px;font-weight:900;}
+.snum.avg .sv{color:#FFD700;font-size:22px;}
+
+.table-wrap{overflow-x:auto;}
+table.mkt{width:100%;border-collapse:collapse;font-size:13px;}
+table.mkt th{padding:9px 12px;text-align:left;color:#fff;font-size:11px;font-weight:700;background:#1A1A1A;white-space:nowrap;}
+table.mkt th.right{text-align:right;}
+table.mkt td{padding:9px 12px;border-bottom:1px solid #f0f0f0;}
+table.mkt tr:nth-child(odd) td{background:#FAFAFA;}
+table.mkt tr:hover td{background:#e8f0fe;}
+table.mkt .price-td{color:#C8102E;font-weight:700;white-space:nowrap;text-align:right;}
+table.mkt .yr-match td{background:#fff8e1 !important;}
+table.mkt .yr-match .yr-cell{color:#C8102E;font-weight:700;}
+table.mkt .avg-row td{background:#e8f5e9 !important;font-weight:700;color:#1b5e20;}
+.count-badge{background:#f0f2f5;border:1px solid #e0e0e0;color:#3D3D3D;font-size:12px;font-weight:700;padding:2px 10px;border-radius:10px;}
+.no-data{background:#fff8e1;border:1px solid #ffe082;border-radius:7px;padding:12px 16px;font-size:13px;color:#6d4c00;text-align:center;display:none;margin-bottom:16px;}
+.note{font-size:11px;color:#909090;padding:6px 14px 10px;}
+.hint{background:#f0f4ff;border:1px solid #c5cfe8;border-radius:7px;padding:9px 14px;font-size:12px;color:#555;margin:0 16px 14px;line-height:1.6;}
+.btn-reset{background:#f5f5f5;color:#555;border:1px solid #ddd;padding:9px 14px;font-size:12px;border-radius:6px;cursor:pointer;margin:0 16px 14px;}
+.status-msg{font-size:12px;color:#2e7d32;margin-left:8px;font-weight:700;}
+
+@media(max-width:700px){.sel-grid{grid-template-columns:1fr 1fr;}.summary-nums{gap:8px;}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="hdr-title">🔍 DEED MOTORS — 市場価格調査ツール</div>
+    <div class="hdr-sub">Зах зээлийн үнийн судалгааны хэрэгсэл</div>
+  </div>
+  <div class="data-badge loading" id="dataBadge">⏳ データ読み込み中...</div>
+</header>
+
+<div class="wrap">
+
+  <!-- ローディング -->
+  <div id="loading-screen">
+    <div class="spinner"></div>
+    <div>市場データを読み込んでいます...</div>
+  </div>
+
+  <!-- エラー -->
+  <div id="error-screen">
+    <div style="font-size:24px;margin-bottom:8px;">⚠️</div>
+    <div style="font-weight:700;margin-bottom:6px;">データの読み込みに失敗しました</div>
+    <div id="error-msg" style="font-size:12px;"></div>
+    <div style="margin-top:12px;font-size:12px;color:#888;">ページを再読み込みするか、管理者に連絡してください。</div>
+  </div>
+
+  <!-- メインコンテンツ（データ読み込み後に表示） -->
+  <div id="main-content" style="display:none;">
+
+    <!-- 選択パネル -->
+    <div class="card">
+      <div class="card-title">🚗 車両選択 / Тээврийн хэрэгсэл сонгох</div>
+      <div class="sel-grid">
+        <div class="fg">
+          <label>メーカー / Үйлдвэрлэгч</label>
+          <select id="maker" onchange="onMaker()">
+            <option value="">選択してください</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>車種モデル / Загвар</label>
+          <select id="modelSlug" onchange="doSearch()" disabled>
+            <option value="">← メーカーを先に選択</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>生産年式 / Үйлдвэрлэсэн он</label>
+          <select id="carYear" onchange="doSearch()">
+            <option value="">指定なし（全件）</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>駆動方式 / Хөдөлгүүрийн систем</label>
+          <select id="driveType" onchange="doSearch()">
+            <option value="">指定なし</option>
+            <option value="4WD">4WD / AWD</option>
+            <option value="2WD">2WD（FF / FR）</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;padding:0 16px 14px;">
+        <button class="btn-reset" onclick="doReset()">↺ リセット</button>
+        <span class="status-msg" id="statusMsg"></span>
+      </div>
+    </div>
+
+    <!-- 結果サマリー -->
+    <div class="result-summary" id="resultSummary">
+      <div class="summary-label">📊 市場参照価格 / Зах зээлийн лавлах үнэ — UNEGUI.MN</div>
+      <div class="summary-model" id="summaryModel"></div>
+      <div class="summary-nums">
+        <div class="snum avg"><div class="sl">平均価格 / Дундаж үнэ</div><div class="sv" id="sAvg">—</div></div>
+        <div class="snum"><div class="sl">最低価格 / Хамгийн бага</div><div class="sv" id="sMin">—</div></div>
+        <div class="snum"><div class="sl">最高価格 / Хамгийн их</div><div class="sv" id="sMax">—</div></div>
+        <div class="snum"><div class="sl">価格幅 / Үнийн зөрүү</div><div class="sv" id="sRange">—</div></div>
+        <div class="snum"><div class="sl">件数 / Тоо</div><div class="sv" id="sCount">—</div></div>
+      </div>
+    </div>
+
+    <!-- データなし -->
+    <div class="no-data" id="noData">⚠️ 該当する市場データが見つかりませんでした。駆動方式または生産年を「指定なし」に変更してください。</div>
+
+    <!-- 市場データテーブル -->
+    <div class="card" id="tableCard" style="display:none;">
+      <div class="card-title">
+        <span>📋 モンゴル市場 抽出データ / Монголын зах зээлийн өгөгдөл（UNEGUI.MN）</span>
+        <span class="count-badge" id="countBadge">0件</span>
+      </div>
+      <div class="hint" id="tableHint"></div>
+      <div class="table-wrap">
+        <table class="mkt">
+          <thead>
+            <tr>
+              <th>生産年 / Он</th>
+              <th>駆動 / Хөдөлгүүр</th>
+              <th>走行距離 / Явсан зам</th>
+              <th>色 / Өнгө</th>
+              <th>入荷年 / Оруулсан он</th>
+              <th class="right">価格 / Үнэ</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="note" id="tableNote"></div>
+    </div>
+
+  </div><!-- /main-content -->
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  データ読み込み（prices.json）
+// ══════════════════════════════════════════════════════
+let DB = null;      // prices
+let MODELS = null;  // models map
+
+const MAKER_LABELS = {
+  toyota:"Toyota", nissan:"Nissan", mitsubishi:"Mitsubishi",
+  honda:"Honda", subaru:"Subaru", suzuki:"Suzuki", lexus:"Lexus",
+  hyundai:"Hyundai", kia:"Kia", bmw:"BMW",
+  "mercedes-benz":"Mercedes-Benz", "land-rover":"Land Rover",
+  volkswagen:"Volkswagen", audi:"Audi", mazda:"Mazda", dongfeng:"Dongfeng / 东风"
+};
+
+async function loadData() {
+  try {
+    const res = await fetch("data/prices.json?v=" + Date.now());
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+
+    DB     = json.prices;
+    MODELS = json.models;
+
+    // UI初期化
+    initMakerSelect(json.models);
+    initYearSelect();
+
+    // バッジ更新
+    const badge = document.getElementById("dataBadge");
+    badge.textContent = "🕐 UNEGUI.MN — " + (json.meta?.updated_at || "最新") + " データ";
+    badge.className = "data-badge";
+
+    document.getElementById("loading-screen").style.display = "none";
+    document.getElementById("main-content").style.display   = "block";
+
+  } catch(e) {
+    document.getElementById("loading-screen").style.display = "none";
+    document.getElementById("error-screen").style.display   = "block";
+    document.getElementById("error-msg").textContent        = e.message;
+    const badge = document.getElementById("dataBadge");
+    badge.textContent = "⚠️ 読み込みエラー";
+    badge.className = "data-badge error";
+  }
+}
+
+function initMakerSelect(models) {
+  const sel = document.getElementById("maker");
+  Object.keys(models).forEach(k => {
+    sel.add(new Option(MAKER_LABELS[k] || k, k));
+  });
+}
+
+function initYearSelect() {
+  const sel = document.getElementById("carYear");
+  for(let y = 2026; y >= 1990; y--) sel.add(new Option(y + "年", y));
+}
+
+// ══════════════════════════════════════════════════════
+//  UI ロジック
+// ══════════════════════════════════════════════════════
+function onMaker() {
+  const maker = document.getElementById("maker").value;
+  const ms    = document.getElementById("modelSlug");
+  ms.innerHTML = "";
+  ms.disabled  = !maker;
+  if (!maker) { ms.add(new Option("← メーカーを先に選択", "")); clearResults(); return; }
+  ms.add(new Option("車種を選択してください", ""));
+  (MODELS[maker] || []).forEach(m => ms.add(new Option(m.l, m.s)));
+  clearResults();
+}
+
+function f(v) { return v.toFixed(1) + " сая ₮"; }
+
+function clearResults() {
+  document.getElementById("resultSummary").style.display = "none";
+  document.getElementById("tableCard").style.display     = "none";
+  document.getElementById("noData").style.display        = "none";
+  document.getElementById("statusMsg").textContent       = "";
+}
+
+function doSearch() {
+  const maker     = document.getElementById("maker").value;
+  const modelSlug = document.getElementById("modelSlug").value;
+  const carYear   = parseInt(document.getElementById("carYear").value) || 0;
+  const driveType = document.getElementById("driveType").value;
+
+  if (!maker || !modelSlug) { clearResults(); return; }
+
+  const key     = maker + "|" + modelSlug;
+  const allCars = DB[key] || [];
+
+  // 駆動方式フィルタ
+  let cars = allCars.filter(c => !driveType || c.drive === driveType);
+
+  // 年式±2年フィルタ
+  let filtered = carYear > 0 ? cars.filter(c => Math.abs(c.year - carYear) <= 2) : cars;
+  if (filtered.length === 0) filtered = cars;   // ヒットなければ全件
+  filtered = filtered.sort((a, b) => a.year - b.year);
+
+  const mLabel   = (MODELS[maker] || []).find(m => m.s === modelSlug)?.l || modelSlug;
+  const makerName = MAKER_LABELS[maker] || maker;
+
+  if (filtered.length === 0) {
+    document.getElementById("noData").style.display        = "block";
+    document.getElementById("resultSummary").style.display = "none";
+    document.getElementById("tableCard").style.display     = "none";
+    document.getElementById("statusMsg").textContent       = "";
+    return;
+  }
+
+  document.getElementById("noData").style.display = "none";
+
+  // 統計計算
+  const prices = filtered.map(c => c.price);
+  const avg    = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const min    = Math.min(...prices);
+  const max    = Math.max(...prices);
+
+  // サマリー
+  document.getElementById("resultSummary").style.display = "block";
+  document.getElementById("summaryModel").textContent =
+    makerName + " " + mLabel +
+    (carYear   ? " — " + carYear + "年式" : "") +
+    (driveType ? " " + driveType : "") +
+    " — " + filtered.length + "件から算出";
+  document.getElementById("sAvg").textContent   = f(avg);
+  document.getElementById("sMin").textContent   = f(min);
+  document.getElementById("sMax").textContent   = f(max);
+  document.getElementById("sRange").textContent = f(max - min);
+  document.getElementById("sCount").textContent = filtered.length + "件";
+
+  // テーブル
+  document.getElementById("tableCard").style.display = "block";
+  document.getElementById("countBadge").textContent  = filtered.length + "件";
+  document.getElementById("tableHint").textContent   = carYear > 0
+    ? "※ " + carYear + "年式 ±2年で絞り込み表示。黄色ハイライト行が指定年式と同年。"
+    : "※ 年式指定なし — 全件表示。";
+
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+  filtered.forEach(c => {
+    const tr      = document.createElement("tr");
+    const isMatch = carYear > 0 && c.year === carYear;
+    if (isMatch) tr.className = "yr-match";
+    tr.innerHTML =
+      "<td class='yr-cell'>" + c.year + "年</td>" +
+      "<td>" + c.drive + "</td><td>" + c.mileage + "</td><td>" + c.color + "</td>" +
+      "<td>" + c.import_year + "年</td>" +
+      "<td class='price-td'>" + c.price.toFixed(1) + " сая ₮</td>";
+    tbody.appendChild(tr);
+  });
+
+  // 平均行
+  const avgTr = document.createElement("tr");
+  avgTr.className = "avg-row";
+  avgTr.innerHTML =
+    "<td colspan='5' style='text-align:right;font-size:12px;'>📊 平均価格 / Дундаж үнэ（" + filtered.length + "件）</td>" +
+    "<td class='price-td' style='color:#1b5e20;'>" + avg.toFixed(1) + " сая ₮</td>";
+  tbody.appendChild(avgTr);
+
+  document.getElementById("tableNote").textContent =
+    "出典: UNEGUI.MN 実績データ（" + (DB._meta?.updated_at || "最新") + "）／ 価格単位: сая ₮（百万トゥグルグ）";
+  document.getElementById("statusMsg").textContent = "✅ " + filtered.length + "件ヒット";
+}
+
+function doReset() {
+  document.getElementById("maker").value       = "";
+  const ms = document.getElementById("modelSlug");
+  ms.innerHTML = "<option value=''>← メーカーを先に選択</option>";
+  ms.disabled  = true;
+  document.getElementById("carYear").value     = "";
+  document.getElementById("driveType").value   = "";
+  clearResults();
+}
+
+// 起動
+loadData();
+</script>
+</body>
+</html>
