@@ -54,6 +54,9 @@ table.mkt .price-td{color:#C8102E;font-weight:700;white-space:nowrap;text-align:
 table.mkt .yr-match td{background:#fff8e1 !important;}
 table.mkt .yr-match .yr-cell{color:#C8102E;font-weight:700;}
 table.mkt .avg-row td{background:#e8f5e9 !important;font-weight:700;color:#1b5e20;}
+table.mkt .anomaly-row td{background:#fff3cd !important;opacity:0.75;}
+table.mkt .anomaly-row .price-td{color:#b45309 !important;}
+.exclude-cb{width:15px;height:15px;cursor:pointer;accent-color:#C8102E;}
 .count-badge{background:#f0f2f5;border:1px solid #e0e0e0;color:#3D3D3D;font-size:12px;font-weight:700;padding:2px 10px;border-radius:10px;}
 .no-data{background:#fff8e1;border:1px solid #ffe082;border-radius:7px;padding:12px 16px;font-size:13px;color:#6d4c00;text-align:center;display:none;margin-bottom:16px;}
 .note{font-size:11px;color:#909090;padding:6px 14px 10px;}
@@ -157,6 +160,7 @@ table.mkt .avg-row td{background:#e8f5e9 !important;font-weight:700;color:#1b5e2
         <table class="mkt">
           <thead>
             <tr>
+              <th style="text-align:center;width:44px;">除外<br><span style="font-size:9px;font-weight:400;color:rgba(255,255,255,.7);">Хасах</span></th>
               <th>生産年 / Он</th>
               <th>駆動 / Хөдөлгүүр</th>
               <th>走行距離 / Явсан зам</th>
@@ -241,19 +245,62 @@ function doSearch(){
   document.getElementById("tableCard").style.display="block";
   document.getElementById("countBadge").textContent=filtered.length+"件";
   document.getElementById("tableHint").textContent=carYear>0?"※ "+carYear+"年式 ±2年で絞り込み表示。黄色ハイライト行が指定年式と同年。":"※ 年式指定なし — 全件表示。";
+  // 異常値判定（中央値の50%未満または200%超）
+  function isAnomalous(price, allPrices){
+    if(allPrices.length<2) return false;
+    const med=allPrices.slice().sort((a,b)=>a-b)[Math.floor(allPrices.length/2)];
+    return price<med*0.5||price>med*2.0;
+  }
+  const allPrices=filtered.map(c=>c.price);
+  window._mktFiltered=filtered;
+
   const tbody=document.getElementById("tableBody");
   tbody.innerHTML="";
-  filtered.forEach(c=>{
+  filtered.forEach((c,i)=>{
     const tr=document.createElement("tr");
-    if(carYear>0&&c.year===carYear) tr.className="yr-match";
-    tr.innerHTML="<td class='yr-cell'>"+c.year+"年</td><td>"+c.drive+"</td><td>"+c.mileage+"</td><td>"+c.color+"</td><td>"+c.import_year+"年</td><td class='price-td'>"+c.price.toFixed(1)+" сая ₮</td>";
+    const ym=carYear>0&&c.year===parseInt(carYear);
+    const anomaly=isAnomalous(c.price,allPrices);
+    const km=parseInt(c.mileage.replace(/[^0-9]/g,""))||0;
+    const suspectLowKm=c.year>=2022&&km<5000&&c.price<80;
+    const warn=anomaly||suspectLowKm;
+    const flagHtml=warn?"<span style='color:#C8102E;font-size:10px;font-weight:700;margin-left:3px;'>⚠️要確認</span>":"";
+    tr.className=(ym?"yr-match ":"")+(warn?"anomaly-row":"");
+    tr.innerHTML=
+      "<td style='text-align:center;padding:6px;'>"+
+        "<input type='checkbox' class='mkt-exclude-cb' data-idx='"+i+"' onchange='mktRecalc()' "+(warn?"checked":"")+">"+
+      "</td>"+
+      "<td class='yr-cell'>"+c.year+"年"+flagHtml+"</td>"+
+      "<td>"+c.drive+"</td><td>"+c.mileage+"</td><td>"+c.color+"</td>"+
+      "<td>"+c.import_year+"年</td>"+
+      "<td class='price-td'>"+c.price.toFixed(1)+" сая ₮</td>";
     tbody.appendChild(tr);
   });
+
+  function mktRecalc(){
+    const cbs=document.querySelectorAll(".mkt-exclude-cb");
+    const active=[];
+    cbs.forEach((cb,i)=>{if(!cb.checked) active.push(window._mktFiltered[i].price);});
+    const useArr=active.length>0?active:allPrices;
+    const uAvg=useArr.reduce((a,b)=>a+b,0)/useArr.length;
+    const uMin=Math.min(...useArr);
+    const uMax=Math.max(...useArr);
+    const label=active.length<allPrices.length?" ("+active.length+"件で算出)":"";
+    document.getElementById("sAvg").textContent=uAvg.toFixed(1)+" сая ₮";
+    document.getElementById("sMin").textContent=uMin.toFixed(1)+" сая ₮";
+    document.getElementById("sMax").textContent=uMax.toFixed(1)+" сая ₮";
+    document.getElementById("sRange").textContent=(uMax-uMin).toFixed(1)+" сая ₮";
+    document.getElementById("sCount").textContent=useArr.length+"件"+label;
+    // 平均行も更新
+    const avgTrEl=document.querySelector(".avg-row");
+    if(avgTrEl) avgTrEl.innerHTML="<td colspan='6' style='text-align:right;font-size:12px;'>📊 有効データ平均 / Дундаж үнэ（"+useArr.length+"件）</td><td class='price-td' style='color:#1b5e20;'>"+uAvg.toFixed(1)+" сая ₮</td>";
+  }
+  window.mktRecalc=mktRecalc;
+
   const avgTr=document.createElement("tr");
   avgTr.className="avg-row";
-  avgTr.innerHTML="<td colspan='5' style='text-align:right;font-size:12px;'>📊 平均価格 / Дундаж үнэ（"+filtered.length+"件）</td><td class='price-td' style='color:#1b5e20;'>"+avg.toFixed(1)+" сая ₮</td>";
+  avgTr.innerHTML="<td colspan='6' style='text-align:right;font-size:12px;'>📊 平均価格 / Дундаж үнэ（"+filtered.length+"件）</td><td class='price-td' style='color:#1b5e20;'>"+avg.toFixed(1)+" сая ₮</td>";
   tbody.appendChild(avgTr);
-  document.getElementById("tableNote").textContent="出典: UNEGUI.MN 実績データ / 価格単位: сая ₮（百万トゥグルグ）";
+  document.getElementById("tableNote").textContent="出典: UNEGUI.MN 実績データ / 価格単位: сая ₮（百万トゥグルグ）※ チェックで除外・再計算";
   document.getElementById("statusMsg").textContent="✅ "+filtered.length+"件ヒット";
 }
 function doReset(){
